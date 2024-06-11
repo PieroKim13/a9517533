@@ -3,11 +3,61 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using Unity.PlasticSCM.Editor;
+using UnityEditor.Build;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.SearchService;
 
 public class PlayerController : MonoBehaviour
 {
+    /// <summary>
+    /// 플레이어 상태 종류
+    /// </summary>
+    enum PlayerState
+    {
+        Idle = 0,
+        Walk,
+        Sprint,
+        Jump,
+        Crouch
+    }
+
+    /// <summary>
+    /// 현재 플레이어 상태
+    /// </summary>
+    PlayerState state = PlayerState.Idle;
+
+    PlayerState State
+    {
+        get => state;
+        set
+        {
+            if(state != value)
+            {
+                state = value;
+                switch(state)
+                {
+                    case PlayerState.Idle:
+
+                        break;
+                    case PlayerState.Walk:
+
+                        break;
+                    case PlayerState.Sprint:
+
+                        break;
+                    case PlayerState.Jump:
+
+                        break;
+                    case PlayerState.Crouch:
+
+                        break;
+                }
+            }
+        }
+    }
+
     PlayerInputAction InputAction;
     public PlayerInputAction playerInputAction => InputAction;
     CharacterController controller;
@@ -41,6 +91,11 @@ public class PlayerController : MonoBehaviour
     float sprintingSpeed = 4.7f;
 
     /// <summary>
+    /// 달리기 체크
+    /// </summary>
+    bool sprintChecking = false;
+
+    /// <summary>
     /// 점프 높이
     /// </summary>
     float jumpHeight = 4.0f;
@@ -66,7 +121,7 @@ public class PlayerController : MonoBehaviour
     int jumpCount = 0;
 
     /// <summary>
-    /// 웅크리기 감소
+    /// 웅크리기 감소량
     /// </summary>
     float crouchDecrease = 1.0f;
 
@@ -94,6 +149,9 @@ public class PlayerController : MonoBehaviour
     Vector3 boxsize = new Vector3(0.25f, 0.125f, 0.25f);
     Vector3 groundCheckPostion;
 
+    public Action onSprinting;
+    public Action offSprinting;
+
     private void Start()
     {
         currentSpeed = walkingSpeed;
@@ -105,7 +163,10 @@ public class PlayerController : MonoBehaviour
         InputAction = new PlayerInputAction();
 
         controller = GetComponent<CharacterController>();
+        cameraRoot = transform.GetChild(0);
+        cinemachine = GetComponentInChildren<CinemachineVirtualCamera>();
 
+        Cursor.lockState = CursorLockMode.Locked;
     }
 
     private void OnEnable()
@@ -121,7 +182,6 @@ public class PlayerController : MonoBehaviour
         InputAction.Mouse.Enable();
         InputAction.Mouse.MouseVector2.performed += OnMouseDelta;
     }
-
 
     private void OnDisable()
     {
@@ -152,7 +212,7 @@ public class PlayerController : MonoBehaviour
     private void OnMove(InputAction.CallbackContext context)
     {
         Vector2 dir = context.ReadValue<Vector2>();
-        
+
         //입력받은 W, A, S, D(Vector2)좌표를 x, z좌표로 지정
         moveDir.x = dir.x; moveDir.z = dir.y;
     }
@@ -166,11 +226,13 @@ public class PlayerController : MonoBehaviour
             {
                 //현재 이동속도 = 달리기 속도
                 currentSpeed = sprintingSpeed * crouchDecrease;
+                onSprinting?.Invoke();
+                sprintChecking = true;
             }
             else
             {
-                //현재 이동속도 = 걷기 속도
-                currentSpeed = walkingSpeed * crouchDecrease;
+                //끝내기 코루틴 실행
+                EndSequence();
             }
         }
     }
@@ -199,21 +261,30 @@ public class PlayerController : MonoBehaviour
 
     private void OnCrouch(InputAction.CallbackContext context)
     {
-        if(context.performed)
+        if (!sprintChecking&&IsGrounded())
         {
-            crouchDecrease = 0.5f;
-            currentSpeed = Temp * crouchDecrease;
-            crouchChecking = true;
+            if(context.performed)
+            {
+                //감소량 0.5배
+                crouchDecrease = 0.5f;
+                ////현재 속도 = 임시변수(현재 속도) * 감소량(0.5)
+                currentSpeed = Temp * crouchDecrease;
+                crouchChecking = true;
 
-            cinemachine.GetCinemachineComponent<Cinemachine3rdPersonFollow>().ShoulderOffset = new Vector3(0f, -0.5f, 0.0625f);
-        }
-        else
-        {
-            crouchDecrease = 1.0f;
-            currentSpeed = Temp * crouchDecrease;
-            crouchChecking = false;
+                //시점 낮추기 #웅크리기 O
+                cameraRoot.transform.position += new Vector3(0f, -0.5f, 0f);
+            }
+            else
+            {
+                //감소량 X
+                crouchDecrease = 1.0f;
+                //현재 속도 = 걷기 속도(현재 속도) * 감소량X
+                currentSpeed = Temp * crouchDecrease;
+                crouchChecking = false;
 
-            cinemachine.GetComponentInChildren<Cinemachine3rdPersonFollow>().ShoulderOffset = new Vector3(0f, 0.0f, 0.0625f);
+                //시점 올리기 #웅크리기 X
+                cameraRoot.transform.position += new Vector3(0f, 0.5f, 0f);
+            }
         }
     }
 
@@ -252,8 +323,10 @@ public class PlayerController : MonoBehaviour
         {
             if (!jumpChecking)
             {
+                //현재 높이가 점프 최대 높이보다 작을 때
                 if(moveDir.y < jumpHeight)
                 {
+                    //현재 높이를 -0.01f 줄임
                     moveDir.y = -0.01f;
                 }
                 jumpChecking = false;
@@ -262,6 +335,17 @@ public class PlayerController : MonoBehaviour
             }
         }
         return false;
+    }
+
+    /// <summary>
+    /// 달리기 종료 코루틴
+    /// </summary>
+    public void EndSequence()
+    {
+        //현재 속도 = 걷기 속도
+        currentSpeed = walkingSpeed * crouchDecrease;
+        offSprinting?.Invoke();
+        sprintChecking = false;
     }
 
 #if UNITY_EDITOR
