@@ -25,15 +25,15 @@ public class Singleton<T> : MonoBehaviour where T : Component
     {
         get
         {
-            //종료 처리 했을 때
+            // 종료 처리 했을 때
             if(isShutDown)
             {
-                //경고 출력
+                // 경고 출력
                 Debug.LogWarning($"{typeof(T).Name} 싱글톤은 이미 삭제 중이다.");
-                //null 반환
+                // null 반환
                 return null;
             }
-            //instance가 없을 때
+            // instance가 없을 때
             if(instance == null)
             {
                 T singletone = FindObjectOfType<T>();

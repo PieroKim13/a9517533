@@ -13,14 +13,17 @@ public class GaugeBase: MonoBehaviour
 
     private void Awake()
     {
+        //게이지바 받아오기
         slider = GetComponent<Slider>();
         Transform temp;
 
+        //임시 변수로 백그라운드 이미지 받아오기 및 컬러 설정
         temp = transform.GetChild(0);
         Image backgroundImage = temp.GetComponent<Image>();
         Color backgroundColor = new Color(color.r, color.g, color.b, color.a * 0.75f);
         backgroundImage.color = backgroundColor;
 
+        //임시 변수로 채우기 이미지 받아오기 및 컬러 설정
         temp = transform.GetChild(1);
         Image fillImage = temp.GetComponentInChildren<Image>();
         fillImage.color = color;

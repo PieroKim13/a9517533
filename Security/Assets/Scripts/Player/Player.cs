@@ -86,7 +86,7 @@ public class Player : MonoBehaviour
             Stamina -= 20.0f * Time.deltaTime;
             if (Stamina <= 0)
             {
-                controller.EndSequence();
+                controller.OffSprinting();
             }
             yield return null;
         }
@@ -114,9 +114,9 @@ public class Player : MonoBehaviour
     /// <returns></returns>
     IEnumerator StaminaRegetateCorutine()
     {
-        //코루틴 실행 후 0.5초 대기
+        // 코루틴 실행 후 0.5초 대기
         yield return new WaitForSeconds(0.75f);
-        //회복량 = 전체 스테미나의 1/10
+        // 회복량 = 전체 스테미나의 1/10
         float regenpersec = MaxStamina / 10;
         float timeElapsed = 0.0f;
         while (timeElapsed < 10)
